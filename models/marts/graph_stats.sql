@@ -11,26 +11,19 @@
 
 {{ config(materialized='table') }}
 
-WITH triple_counts AS (
-    -- SPARQL GRAPH clause counts live triples per named graph.
-    -- Returns "source" graphs only (urn:source:* pattern).
-    SELECT
-        trim(BOTH '<>' FROM result->>'g') AS graph_iri,
-        (result->>'count')::bigint         AS triple_count
-    FROM pg_ripple.sparql($sparql$
-        SELECT ?g (COUNT(*) AS ?count)
-        WHERE { GRAPH ?g { ?s ?p ?o . } }
-        GROUP BY ?g
-        ORDER BY ?g
-    $sparql$)
-    WHERE trim(BOTH '<>' FROM result->>'g') LIKE 'urn:source:%'
-)
-
+-- pg_ripple.graph_stats() returns empty because _pg_ripple.graph_metrics is
+-- not populated by ingest_json in 0.78.0, so we count triples via SPARQL instead.
 SELECT
-    graph_iri,
-    triple_count,
-    now()             AS last_write_at,
-    0::bigint         AS conflicts_total,
-    0                 AS subscriptions_active
-FROM triple_counts
+    trim(BOTH '<>' FROM result->>'g') AS graph_iri,
+    (result->>'count')::bigint         AS triple_count,
+    now()                              AS last_write_at,
+    0::bigint                          AS conflicts_total,
+    0                                  AS subscriptions_active
+FROM pg_ripple.sparql($sparql$
+    SELECT ?g (COUNT(*) AS ?count)
+    WHERE { GRAPH ?g { ?s ?p ?o . } }
+    GROUP BY ?g
+    ORDER BY ?g
+$sparql$)
+WHERE trim(BOTH '<>' FROM result->>'g') LIKE 'urn:source:%'
 ORDER BY graph_iri
