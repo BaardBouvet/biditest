@@ -1,18 +1,23 @@
-.PHONY: all seed ingest run test clean help
+.PHONY: all seed setup ingest run test clean help
 
 help:
 	@echo "biditest: pg-ripple 0.78.0 bidirectional integration worked example"
 	@echo ""
 	@echo "Targets:"
-	@echo "  all      Run the full end-to-end workflow (seed → ingest → run → test)"
+	@echo "  all      Run the full end-to-end workflow (setup → seed → ingest → run → test)"
+	@echo "  setup    Register mappings, Datalog rules, conflict policies, subscriptions"
 	@echo "  seed     Load seed data (crm_contacts, erp_contacts)"
 	@echo "  ingest   Ingest seed rows into pg_ripple via ingest_json(mode=>'diff')"
 	@echo "  run      Materialise dbt models"
 	@echo "  test     Run all dbt tests"
 	@echo "  clean    Drop all pg_ripple data (DELETE WHERE { ?s ?p ?o })"
 
-all: seed ingest run test
+all: setup seed ingest run test
 	@echo "✓ Full workflow complete — all 31 tests passed"
+
+setup:
+	@echo "→ Setting up pg-ripple (Steps 1–5)…"
+	dbt run-operation setup_bidi_example --profiles-dir .
 
 seed:
 	@echo "→ Loading seed data…"

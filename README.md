@@ -89,9 +89,7 @@ Then verify:
 dbt debug
 ```
 
----
-
-### Environment variables
+Environment variables
 
 The `profiles.yml` reads connection details from environment variables so you
 never need to edit the file directly:
@@ -106,7 +104,19 @@ never need to edit the file directly:
 
 ---
 
-### 1. Load the seed data
+## Workflow
+
+### 1. Set up pg-ripple infrastructure
+
+```bash
+dbt run-operation setup_bidi_example
+```
+
+Registers the two JSON mappings (`crm_contact`, `erp_contact`), loads the
+composite-identity Datalog rule, registers the `latest_wins` conflict policy
+on `ex:name`, and creates the `crm_relay` / `erp_relay` subscriptions.
+
+### 2. Load the seed data
 
 ```bash
 dbt seed
@@ -115,7 +125,7 @@ dbt seed
 This loads `seeds/crm_contacts.csv` and `seeds/erp_contacts.csv` into the
 `raw` schema as plain PostgreSQL tables.
 
-### 2. Ingest contacts into pg-ripple (Step 4)
+### 3. Ingest contacts into pg-ripple (Step 4)
 
 ```bash
 dbt run-operation ingest_contacts
@@ -129,7 +139,7 @@ for each contact.  After this step:
 - The `latest_wins` policy resolves `ex:name` to `"Ada Lovelace"` (ERP at
   11:30 beats CRM at 10:00).
 
-### 3. Materialise dbt models
+### 4. Materialise dbt models
 
 ```bash
 dbt run
@@ -142,7 +152,7 @@ dbt run
 | `marts.merged_contacts` | Resolved projection from SPARQL (one row per unique email) |
 | `marts.graph_stats` | Per-graph triple counts and conflict metrics |
 
-### 4. Run the dbt tests
+### 5. Run the dbt tests
 
 ```bash
 dbt test
@@ -203,13 +213,14 @@ dbt run-operation simulate_linkback \
   docker-compose.yml         # db (pg-ripple:0.78.0) + app services
 
 init/
-  01_init_ripple.sql         # Steps 1–5: register mappings, rules, policies, subscriptions
+  01_init_ripple.sql         # CREATE EXTENSION, ALTER DATABASE defaults, GRANT permissions
 
 seeds/
   crm_contacts.csv           # CRM contacts (id, email, name, last_modified)
   erp_contacts.csv           # ERP contacts
 
 macros/
+  setup_bidi_example.sql     # Steps 1–5: register mappings, rules, policies, subscriptions
   ingest_contacts.sql        # Step 4: ingest_json(mode=>'diff') for each seed row
   test_scenarios.sql         # Interactive macros: simulate_erp_name_update, simulate_linkback
   generate_schema_name.sql   # Custom schema naming for dbt
@@ -222,7 +233,6 @@ models/
   marts/
     merged_contacts.sql      # Resolved projection via pg_ripple.sparql()
     graph_stats.sql          # pg_ripple.graph_stats() as a table
-    outbox_events.sql        # Union of crm_relay + erp_relay outbox tables
     schema.yml               # Generic not_null/unique/accepted_values tests
 
 tests/
