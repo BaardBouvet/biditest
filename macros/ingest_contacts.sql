@@ -77,13 +77,28 @@
   {{ log("", info=True) }}
   {{ log("All contacts ingested. Run 'dbt run' to materialise the dbt models.", info=True) }}
 
-  {# ── Step 2 (runtime): run Datalog inference to derive owl:sameAs ──────── #}
+  {# ── Step 2 (runtime): assert sameAs for contacts sharing ex:email ───── #}
+  {#
+    pg-ripple 0.78.0 Datalog bug: the infer() engine computes the result (returns 1),
+    but the generated SQL has a self-join bug (ON t1.s = t1.s), so derived facts
+    don't get written to SPARQL-queryable VP tables. Workaround: use sparql_update()
+    which DOES write to VP tables and IS visible to SPARQL queries.
+  #}
 
-  {% set sql_infer %}
-    SELECT pg_ripple.infer('same_email');
+  {% set sql_sameas %}
+    SELECT pg_ripple.sparql_update($sparql$
+      PREFIX ex:  <http://example.org/>
+      PREFIX owl: <http://www.w3.org/2002/07/owl#>
+      INSERT { ?a owl:sameAs ?b . }
+      WHERE  {
+          ?a ex:email ?e .
+          ?b ex:email ?e .
+          FILTER (str(?a) < str(?b))
+      }
+    $sparql$);
   {% endset %}
-  {% do run_query(sql_infer) %}
-  {{ log("✓ Datalog inference run — owl:sameAs derived for shared-email contacts (BIDI-REF-01)", info=True) }}
+  {% do run_query(sql_sameas) %}
+  {{ log("✓ owl:sameAs inserted for shared-email contacts via SPARQL UPDATE (BIDI-REF-01 workaround)", info=True) }}
 
   {# ── Recompute conflict winners for ex:name across merged entities ────── #}
   {#
