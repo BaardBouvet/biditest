@@ -75,15 +75,24 @@
   {% endfor %}
 
   {{ log("", info=True) }}
-  {{ log("All contacts ingested. Run 'dbt run' to materialise the dbt models.", info=True) }}
+  {{ log("All contacts ingested.", info=True) }}
 
-  {# ── Step 2: Datalog rule automatically fires with rule_graph_scope='all' ─ #}
+  {# ── Step 2: Run Datalog inference (BIDI-REF-01) ─────────────────────────── #}
   {#
-    With pg_ripple.rule_graph_scope set to 'all' (via ALTER DATABASE in
-    init/01_init_ripple.sql), the same_email Datalog rule now fires correctly
-    and writes owl:sameAs facts directly to the VP tables. The workaround
-    (sparql_update + recompute_conflict_winners) is no longer needed.
+    pg_ripple Datalog rules are not evaluated automatically — infer() must be
+    called explicitly after data is loaded. It materialises the owl:sameAs
+    facts derived by the same_email rule into the VP tables, which the
+    merged_contacts model then queries via SPARQL.
+
+    rule_graph_scope = 'all' (set as a database default in
+    init/01_init_ripple.sql) allows the rule engine to see triples across all
+    named graphs, which is required for the cross-graph email match to work.
   #}
-  {{ log("✓ same_email Datalog rule fires with rule_graph_scope='all' (BIDI-REF-01)", info=True) }}
+
+  {% set sql_infer %}
+    SELECT pg_ripple.infer('same_email');
+  {% endset %}
+  {% do run_query(sql_infer) %}
+  {{ log("✓ Datalog inference complete — owl:sameAs facts materialised (BIDI-REF-01)", info=True) }}
 
 {% endmacro %}
