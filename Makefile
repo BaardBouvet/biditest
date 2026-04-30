@@ -39,10 +39,7 @@ clean:
 	@echo "→ Clearing pg_ripple graph…"
 	docker exec pg-ripple-biditest psql -U postgres -d biditest -c \
 	  "SELECT pg_ripple.sparql_update('DELETE WHERE { ?s ?p ?o }');" 2>/dev/null
-	@echo "→ Dropping Datalog rules…"
-	docker exec pg-ripple-biditest psql -U postgres -d biditest -c \
-	  "SELECT pg_ripple.drop_rules('same_email');" 2>/dev/null
 	@echo "→ Clearing seed tables…"
 	docker exec pg-ripple-biditest psql -U postgres -d biditest -c \
 	  "TRUNCATE raw.crm_contacts, raw.erp_contacts;" 2>/dev/null
-	@echo "✓ Clean complete (graph, rules, and seeds cleared)"
+	@echo "✓ Clean complete (graph and seeds cleared)"
