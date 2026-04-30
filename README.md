@@ -141,9 +141,8 @@ dbt run
 | `staging.stg_erp_contacts` | Normalised ERP seed view |
 | `marts.merged_contacts` | Resolved projection from SPARQL (one row per unique email) |
 | `marts.graph_stats` | Per-graph triple counts and conflict metrics |
-| `marts.outbox_events` | Union of CRM and ERP relay outbox tables |
 
-### 5. Run the dbt tests
+### 4. Run the dbt tests
 
 ```bash
 dbt test
@@ -164,11 +163,6 @@ You can also target tests for a specific model:
 ```bash
 dbt test --select merged_contacts
 ```
-
-### 6. Explore the worked example interactively
-
-Open `analyses/worked_example_steps.sql` in the VS Code SQLTools pane (or in
-psql) to execute any individual step.
 
 ---
 
@@ -217,6 +211,8 @@ seeds/
 
 macros/
   ingest_contacts.sql        # Step 4: ingest_json(mode=>'diff') for each seed row
+  test_scenarios.sql         # Interactive macros: simulate_erp_name_update, simulate_linkback
+  generate_schema_name.sql   # Custom schema naming for dbt
 
 models/
   staging/
@@ -233,9 +229,6 @@ tests/
   assert_latest_wins_name.sql           # latest_wins picks ERP name for ada@example.com
   assert_email_merge_deduplicates.sql   # sameAs rule produces one row per email
   assert_both_graphs_present.sql        # both named graphs have triples after ingest
-
-analyses/
-  worked_example_steps.sql   # Full verbatim SQL for all 8 steps
 
 profiles.yml                 # dbt profile (connects to the db service)
 dbt_project.yml
