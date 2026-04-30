@@ -32,7 +32,47 @@ Source spec: [v0.77.0-full.md — Worked example](https://github.com/grove/pg-ri
 
 ## Getting started
 
-### 1. Open in devcontainer
+Choose one of two ways to run the database — plain Docker or the devcontainer.
+
+### Option A — Local (plain Docker + local venv)
+
+**1. Start the pg-ripple container**
+
+```bash
+docker run -d \
+  --name pg-ripple-biditest \
+  -e POSTGRES_DB=biditest \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 \
+  ghcr.io/grove/pg-ripple:0.78.0
+
+# Initialise the extension
+docker exec -i pg-ripple-biditest psql -U postgres -d biditest \
+  < init/01_init_ripple.sql
+```
+
+**2. Create the virtual environment and install dependencies**
+
+```bash
+# uv is used here because python3-venv may not be installed system-wide
+curl -Ls https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env   # or restart your shell
+
+uv venv .venv
+uv pip install setuptools
+uv pip install -r requirements.txt
+source .venv/bin/activate
+```
+
+**3. Verify the connection**
+
+```bash
+# DBT_HOST defaults to localhost — no override needed
+dbt debug --profiles-dir .
+```
+
+### Option B — Devcontainer
 
 In VS Code: **Reopen in Container** (requires the
 [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)).
@@ -41,14 +81,32 @@ Docker Compose will:
 - Pull `ghcr.io/grove/pg-ripple:0.78.0`
 - Run `init/01_init_ripple.sql` to `CREATE EXTENSION pg_ripple`
 - Start the Python devcontainer and install the Python dependencies
+- Set `DBT_HOST=db` automatically so dbt resolves the Compose service name
 
-### 2. Verify the connection
+Then verify:
 
 ```bash
 dbt debug
 ```
 
-### 3. Load the seed data
+---
+
+### Environment variables
+
+The `profiles.yml` reads connection details from environment variables so you
+never need to edit the file directly:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `DBT_HOST` | `localhost` | Set to `db` inside the devcontainer |
+| `DBT_PORT` | `5432` | |
+| `DBT_USER` | `postgres` | |
+| `DBT_PASSWORD` | `postgres` | |
+| `DBT_DBNAME` | `biditest` | |
+
+---
+
+### 1. Load the seed data
 
 ```bash
 dbt seed
@@ -57,7 +115,7 @@ dbt seed
 This loads `seeds/crm_contacts.csv` and `seeds/erp_contacts.csv` into the
 `raw` schema as plain PostgreSQL tables.
 
-### 4. Run the pg-ripple setup (Steps 1–5)
+### 2. Run the pg-ripple setup (Steps 1–5)
 
 ```bash
 dbt run-operation setup_bidi_example
@@ -67,7 +125,7 @@ This registers the two JSON mappings (`crm_contact`, `erp_contact`), the
 composite-identity Datalog rule, the `latest_wins` conflict policy on `ex:name`,
 and the `crm_relay` / `erp_relay` subscriptions.
 
-### 5. Ingest contacts into pg-ripple (Step 4)
+### 3. Ingest contacts into pg-ripple (Step 4)
 
 ```bash
 dbt run-operation ingest_contacts
@@ -81,7 +139,7 @@ for each contact.  After this step:
 - The `latest_wins` policy resolves `ex:name` to `"Ada Lovelace"` (ERP at
   11:30 beats CRM at 10:00).
 
-### 6. Materialise dbt models
+### 4. Materialise dbt models
 
 ```bash
 dbt run
@@ -95,7 +153,7 @@ dbt run
 | `marts.graph_stats` | Per-graph triple counts and conflict metrics |
 | `marts.outbox_events` | Union of CRM and ERP relay outbox tables |
 
-### 7. Run the dbt tests
+### 5. Run the dbt tests
 
 ```bash
 dbt test
@@ -117,7 +175,7 @@ You can also target tests for a specific model:
 dbt test --select merged_contacts
 ```
 
-### 8. Explore the worked example interactively
+### 6. Explore the worked example interactively
 
 Open `analyses/worked_example_steps.sql` in the VS Code SQLTools pane (or in
 psql) to execute any individual step.

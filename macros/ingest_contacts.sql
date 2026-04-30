@@ -24,17 +24,17 @@
   {% for row in crm_rows.rows %}
     {# Build the JSON payload that matches the crm_contact @context #}
     {% set payload = {
-        "id":           row[0],
-        "email":        row[1],
-        "name":         row[2],
-        "lastModified": row[3]
+        "id":           row[0] | string,
+        "email":        row[1] | string,
+        "name":         row[2] | string,
+        "lastModified": row[3] | string
     } %}
 
     {% set subject_iri = "https://crm.example.com/contacts/" ~ row[0] %}
 
     {% set sql %}
       SELECT pg_ripple.ingest_json(
-          payload     => {{ tojson(payload) }}::jsonb,
+          payload     => $json${{ tojson(payload) }}$json$::jsonb,
           subject_iri => '{{ subject_iri }}',
           mapping     => 'crm_contact',
           graph_iri   => '<urn:source:crm>',
@@ -54,16 +54,16 @@
   {% for row in erp_rows.rows %}
     {% set payload = {
         "id":           row[0] | string,
-        "email":        row[1],
-        "name":         row[2],
-        "lastModified": row[3]
+        "email":        row[1] | string,
+        "name":         row[2] | string,
+        "lastModified": row[3] | string
     } %}
 
     {% set subject_iri = "https://erp.example.com/api/contact/" ~ row[0] %}
 
     {% set sql %}
       SELECT pg_ripple.ingest_json(
-          payload     => {{ tojson(payload) }}::jsonb,
+          payload     => $json${{ tojson(payload) }}$json$::jsonb,
           subject_iri => '{{ subject_iri }}',
           mapping     => 'erp_contact',
           graph_iri   => '<urn:source:erp>',
@@ -76,6 +76,27 @@
 
   {{ log("", info=True) }}
   {{ log("All contacts ingested. Run 'dbt run' to materialise the dbt models.", info=True) }}
+
+  {# ── Step 2 (runtime): run Datalog inference to derive owl:sameAs ──────── #}
+
+  {% set sql_infer %}
+    SELECT pg_ripple.infer('same_email');
+  {% endset %}
+  {% do run_query(sql_infer) %}
+  {{ log("✓ Datalog inference run — owl:sameAs derived for shared-email contacts (BIDI-REF-01)", info=True) }}
+
+  {# ── Recompute conflict winners for ex:name across merged entities ────── #}
+  {#
+    After sameAs triples are in place, recompute_conflict_winners re-evaluates
+    the latest_wins policy.  This ensures the resolved projection reflects the
+    correct winner when the merged_contacts model is materialised.
+  #}
+
+  {% set sql_recompute %}
+    SELECT pg_ripple.recompute_conflict_winners('http://example.org/name');
+  {% endset %}
+  {% do run_query(sql_recompute) %}
+  {{ log("✓ ex:name conflict winners recomputed (latest_wins across merged entities)", info=True) }}
 
 {% endmacro %}
 

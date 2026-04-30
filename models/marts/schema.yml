@@ -46,31 +46,13 @@ models:
       - name: subscriptions_active
         description: Number of active subscriptions that include this graph
 
-  - name: outbox_events
+  - name: bidi_status
     description: >
-      Union of the CRM and ERP relay outbox tables.  Each row is one
-      pg_ripple outbound event (INSERT / UPDATE / DELETE) in the BIDI-WIRE-01
-      format.  Undelivered rows have delivered_at IS NULL.
+      Per-subscription operational health surface from pg_ripple.bidi_status()
+      (BIDIOPS-DASH-01). Shows queue depth, pending linkbacks, dead-letter
+      counts, and pg-trickle delivery state for each registered relay.
     columns:
-      - name: subscription
-        description: Which relay outbox the event belongs to (crm_relay or erp_relay)
-      - name: event_id
-        description: Stable UUID for this event (used in record_linkback calls)
-      - name: event_type
-        description: INSERT, UPDATE, or DELETE
-      - name: subject
-        description: Subject IRI (target-graph-shaped when subject_resolved is true)
-      - name: subject_resolved
-        description: False for hub IRIs awaiting a record_linkback call
-      - name: graph
-        description: Source named graph IRI
-      - name: event_ts
-        description: Timestamp carried by the event (not the delivery time)
-      - name: after_frame
-        description: Full current entity frame (null for DELETE events)
-      - name: base_frame
-        description: Sparse previous-value diff used for receiver-side CAS
-      - name: emitted_at
-        description: When the row was inserted into the outbox
-      - name: delivered_at
-        description: When pg-trickle confirmed delivery (null if pending)
+      - name: subscription_name
+        description: Name of the pg_ripple subscription (e.g. crm_relay)
+        data_tests:
+          - not_null

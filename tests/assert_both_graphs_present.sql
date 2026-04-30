@@ -10,7 +10,7 @@
 SELECT graph_iri
 FROM {{ ref('graph_stats') }}
 WHERE
-    graph_iri IN ('<urn:source:crm>', '<urn:source:erp>')
+    graph_iri IN ('urn:source:crm', 'urn:source:erp')
     AND triple_count < 1
 
 -- Also fail if either expected graph is absent entirely.
@@ -18,7 +18,7 @@ UNION ALL
 
 SELECT expected.graph_iri
 FROM (
-    VALUES ('<urn:source:crm>'), ('<urn:source:erp>')
+    VALUES ('urn:source:crm'), ('urn:source:erp')
 ) AS expected(graph_iri)
 LEFT JOIN {{ ref('graph_stats') }} gs USING (graph_iri)
 WHERE gs.graph_iri IS NULL

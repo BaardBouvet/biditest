@@ -53,18 +53,24 @@
   {% do run_query(sql_erp_mapping) %}
   {{ log("✓ erp_contact mapping registered", info=True) }}
 
-  {# ── Step 2: Composite-identity Datalog rule — merge on shared email ──── #}
+  {# ── Step 2: Composite-identity rule — merge on shared email ─────────── #}
 
-  {% set sql_datalog %}
-    SELECT pg_ripple.create_datalog_rule($$
-      sameAs(?a, ?b) :-
-          <http://example.org/email>(?a, ?e),
-          <http://example.org/email>(?b, ?e),
-          ?a != ?b.
-    $$);
+  {% set sql_drop_rules %}
+    SELECT pg_ripple.drop_rules('same_email');
   {% endset %}
-  {% do run_query(sql_datalog) %}
-  {{ log("✓ sameAs Datalog rule registered (merge on ex:email)", info=True) }}
+  {% do run_query(sql_drop_rules) %}
+
+  {% set sql_load_rules %}
+    SELECT pg_ripple.load_rules(
+        rules    => '?x <http://www.w3.org/2002/07/owl#sameAs> ?y :-
+                       ?x <http://example.org/email> ?e,
+                       ?y <http://example.org/email> ?e,
+                       ?x != ?y .',
+        rule_set => 'same_email'
+    );
+  {% endset %}
+  {% do run_query(sql_load_rules) %}
+  {{ log("✓ same_email Datalog rule loaded (BIDI-REF-01)", info=True) }}
 
   {# ── Step 3: latest_wins conflict policy on ex:name ───────────────────── #}
 
@@ -89,17 +95,19 @@
     so CRM-originated writes don't echo back to CRM, and vice-versa.
   #}
 
+  {#
+    create_subscription in pg-ripple 0.78 takes:
+      (name text, filter_sparql text DEFAULT NULL, filter_shape text DEFAULT NULL)
+    Outbox tables are provisioned separately via pg-trickle (not required here).
+  #}
+
   {% set sql_crm_sub %}
     SELECT pg_ripple.create_subscription(
         name         => 'crm_relay',
-        frame        => '{
-          "@context": {
-            "ex": "http://example.org/"
-          },
-          "ex:email": {},
-          "ex:name":  {}
-        }'::jsonb,
-        target_graph => '<urn:source:crm>'
+        filter_sparql => '
+            FILTER EXISTS { ?s <http://example.org/email> ?e }
+            FILTER(?g NOT IN (<urn:source:crm>))
+        '
     );
   {% endset %}
   {% do run_query(sql_crm_sub) %}
@@ -108,14 +116,10 @@
   {% set sql_erp_sub %}
     SELECT pg_ripple.create_subscription(
         name         => 'erp_relay',
-        frame        => '{
-          "@context": {
-            "ex": "http://example.org/"
-          },
-          "ex:email": {},
-          "ex:name":  {}
-        }'::jsonb,
-        target_graph => '<urn:source:erp>'
+        filter_sparql => '
+            FILTER EXISTS { ?s <http://example.org/email> ?e }
+            FILTER(?g NOT IN (<urn:source:erp>))
+        '
     );
   {% endset %}
   {% do run_query(sql_erp_sub) %}
