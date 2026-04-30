@@ -115,17 +115,7 @@ dbt seed
 This loads `seeds/crm_contacts.csv` and `seeds/erp_contacts.csv` into the
 `raw` schema as plain PostgreSQL tables.
 
-### 2. Run the pg-ripple setup (Steps 1–5)
-
-```bash
-dbt run-operation setup_bidi_example
-```
-
-This registers the two JSON mappings (`crm_contact`, `erp_contact`), the
-composite-identity Datalog rule, the `latest_wins` conflict policy on `ex:name`,
-and the `crm_relay` / `erp_relay` subscriptions.
-
-### 3. Ingest contacts into pg-ripple (Step 4)
+### 2. Ingest contacts into pg-ripple (Step 4)
 
 ```bash
 dbt run-operation ingest_contacts
@@ -139,7 +129,7 @@ for each contact.  After this step:
 - The `latest_wins` policy resolves `ex:name` to `"Ada Lovelace"` (ERP at
   11:30 beats CRM at 10:00).
 
-### 4. Materialise dbt models
+### 3. Materialise dbt models
 
 ```bash
 dbt run
@@ -219,16 +209,14 @@ dbt run-operation simulate_linkback \
   docker-compose.yml         # db (pg-ripple:0.78.0) + app services
 
 init/
-  01_init_ripple.sql         # CREATE EXTENSION pg_ripple (runs on first start)
+  01_init_ripple.sql         # Steps 1–5: register mappings, rules, policies, subscriptions
 
 seeds/
   crm_contacts.csv           # CRM contacts (id, email, name, last_modified)
   erp_contacts.csv           # ERP contacts
 
 macros/
-  setup_bidi_example.sql     # Steps 1–5: register mappings, rules, policies, subscriptions
   ingest_contacts.sql        # Step 4: ingest_json(mode=>'diff') for each seed row
-                             # Also: simulate_erp_name_update, simulate_linkback
 
 models/
   staging/

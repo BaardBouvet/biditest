@@ -5,7 +5,6 @@ config-version: 2
 profile: 'biditest'
 
 model-paths:  ["models"]
-analysis-paths: ["analyses"]
 seed-paths:   ["seeds"]
 macro-paths:  ["macros"]
 test-paths:   ["tests"]

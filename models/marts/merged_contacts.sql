@@ -2,24 +2,25 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Queries the pg_ripple *resolved projection* via SPARQL.
 --
--- Because CRM and ERP contacts share ex:email (via the sameAs SPARQL UPDATE in
--- ingest_contacts), this model returns one canonical row per unique email.
--- The latest_wins conflict policy on ex:name is implemented by ordering on the
--- prov:generatedAtTime annotation and picking the most-recently-asserted value.
+-- The Datalog rule (BIDI-REF-01) asserts owl:sameAs between contacts that
+-- share ex:email across source graphs.  pg_ripple.rule_graph_scope = 'all'
+-- is set as a database default in init/01_init_ripple.sql so the engine
+-- sees triples across all named graphs on every connection.
+--
+-- The latest_wins conflict policy on ex:name picks the most-recently-asserted
+-- value across both source graphs.
 --
 -- Steps covered: Steps 3–4 outcome from the worked example.
 -- Run: dbt run --select merged_contacts
 
-{{ config(materialized='table') }}
+{{ config(materialized='view') }}
 
 -- One row per unique email address, with the conflict-resolved name.
 --
--- The Datalog rule in setup_bidi_example (BIDI-REF-01) asserts:
---   crm_subject owl:sameAs erp_subject
--- for contacts that share ex:email.  Subjects in the owl:sameAs subject
--- position are the "non-canonical" side; excluding them leaves exactly one
--- row per email.  The surviving subject already carries the latest_wins name
--- because recompute_conflict_winners() ran after ingest.
+-- The Datalog rule asserts owl:sameAs between the two subjects that share an
+-- email.  Subjects appearing in the owl:sameAs object position are the
+-- non-canonical side; excluding them with FILTER NOT EXISTS leaves exactly
+-- one row per email.  The surviving subject carries the latest_wins name.
 
 SELECT
     trim(BOTH '<>' FROM result->>'subject')  AS subject_iri,
