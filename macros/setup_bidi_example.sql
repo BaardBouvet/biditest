@@ -81,11 +81,7 @@
   {% set sql_conflict %}
     SELECT pg_ripple.register_conflict_policy(
         predicate => 'http://example.org/name',
-        strategy  => 'latest_wins',
-        config    => '{
-          "timestamp_predicate":
-            "http://www.w3.org/ns/prov#generatedAtTime"
-        }'::jsonb
+        strategy  => 'latest_wins'
     );
   {% endset %}
   {% do run_query(sql_conflict) %}
