@@ -27,7 +27,7 @@
 
   {% set sql %}
     SELECT pg_ripple.ingest_json(
-        payload     => {{ tojson(payload) }}::jsonb,
+        payload     => $json${{ tojson(payload) }}$json$::jsonb,
         subject_iri => 'https://erp.example.com/api/contact/7',
         mapping     => 'erp_contact',
         graph_iri   => '<urn:source:erp>',
