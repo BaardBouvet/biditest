@@ -1,0 +1,71 @@
+version: 2
+
+models:
+  - name: stg_crm_contacts
+    description: >
+      Staging view over the raw CRM contacts seed. Normalises the lastModified
+      column to timestamptz and adds the subject_iri and graph_iri columns used
+      by the ingest macros.
+    columns:
+      - name: contact_id
+        description: Raw CRM contact ID (e.g. "c-42")
+        data_tests:
+          - not_null
+          - unique
+      - name: email
+        description: Contact email address — used as the merge key by the Datalog rule
+        data_tests:
+          - not_null
+      - name: name
+        description: Contact display name
+        data_tests:
+          - not_null
+      - name: last_modified_at
+        description: Source system last-modified timestamp
+        data_tests:
+          - not_null
+      - name: subject_iri
+        description: Fully-qualified IRI minted by the crm_contact mapping iri_template
+        data_tests:
+          - not_null
+          - unique
+      - name: graph_iri
+        description: Named graph this contact belongs to (<urn:source:crm>)
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['<urn:source:crm>']
+
+  - name: stg_erp_contacts
+    description: >
+      Staging view over the raw ERP contacts seed. Same normalisation as the
+      CRM model but using the ERP IRI template and graph.
+    columns:
+      - name: contact_id
+        description: Raw ERP contact ID cast to text (e.g. "7")
+        data_tests:
+          - not_null
+          - unique
+      - name: email
+        description: Contact email address — used as the merge key
+        data_tests:
+          - not_null
+      - name: name
+        description: Contact display name
+        data_tests:
+          - not_null
+      - name: last_modified_at
+        description: Source system last-modified timestamp
+        data_tests:
+          - not_null
+      - name: subject_iri
+        description: Fully-qualified IRI minted by the erp_contact mapping iri_template
+        data_tests:
+          - not_null
+          - unique
+      - name: graph_iri
+        description: Named graph this contact belongs to (<urn:source:erp>)
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['<urn:source:erp>']

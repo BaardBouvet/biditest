@@ -1,0 +1,21 @@
+# profiles.yml — dbt connection profile for the biditest devcontainer.
+#
+# The DBT_PROFILES_DIR env-var (set in devcontainer.json) tells dbt to look
+# for this file in /workspace rather than ~/.dbt/.
+#
+# When running dbt *outside* the devcontainer (e.g. on a local machine with a
+# forwarded port) set host to "localhost" and ensure the db container is
+# reachable on port 5432.
+
+biditest:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: db          # service name from docker-compose.yml
+      port: 5432
+      user: postgres
+      password: postgres
+      dbname: biditest
+      schema: public
+      threads: 1

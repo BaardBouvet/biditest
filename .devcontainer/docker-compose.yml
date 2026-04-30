@@ -1,0 +1,33 @@
+services:
+  db:
+    image: ghcr.io/grove/pg-ripple:0.78.0
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: biditest
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ../init:/docker-entrypoint-initdb.d:ro
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d biditest"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: mcr.microsoft.com/devcontainers/python:3.12-bookworm
+    volumes:
+      - ..:/workspace:cached
+    working_dir: /workspace
+    command: sleep infinity
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DBT_PROFILES_DIR: /workspace
+
+volumes:
+  pg_data:

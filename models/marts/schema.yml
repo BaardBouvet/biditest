@@ -1,0 +1,76 @@
+version: 2
+
+models:
+  - name: merged_contacts
+    description: >
+      Resolved projection of CRM + ERP contacts queried via SPARQL.
+      The sameAs Datalog rule merges contacts that share ex:email; the
+      latest_wins conflict policy picks the most-recently-asserted ex:name
+      across both source graphs.
+    columns:
+      - name: subject_iri
+        description: Canonical IRI for this contact in the resolved projection
+        data_tests:
+          - not_null
+          - unique
+      - name: email
+        description: Shared email address (the merge key)
+        data_tests:
+          - not_null
+          - unique
+      - name: name
+        description: Winner of the latest_wins policy on ex:name
+        data_tests:
+          - not_null
+
+  - name: graph_stats
+    description: >
+      Per-source-graph observability metrics from pg_ripple.graph_stats()
+      (BIDI-OBS-01). Refreshed on each dbt run.
+    columns:
+      - name: graph_iri
+        description: Named graph IRI (e.g. <urn:source:crm>)
+        data_tests:
+          - not_null
+          - unique
+      - name: triple_count
+        description: Current number of live triples in this graph
+        data_tests:
+          - not_null
+      - name: last_write_at
+        description: Timestamp of the most recent write into this graph
+      - name: conflicts_total
+        description: Lifetime count of source assertions excluded by conflict policies
+        data_tests:
+          - not_null
+      - name: subscriptions_active
+        description: Number of active subscriptions that include this graph
+
+  - name: outbox_events
+    description: >
+      Union of the CRM and ERP relay outbox tables.  Each row is one
+      pg_ripple outbound event (INSERT / UPDATE / DELETE) in the BIDI-WIRE-01
+      format.  Undelivered rows have delivered_at IS NULL.
+    columns:
+      - name: subscription
+        description: Which relay outbox the event belongs to (crm_relay or erp_relay)
+      - name: event_id
+        description: Stable UUID for this event (used in record_linkback calls)
+      - name: event_type
+        description: INSERT, UPDATE, or DELETE
+      - name: subject
+        description: Subject IRI (target-graph-shaped when subject_resolved is true)
+      - name: subject_resolved
+        description: False for hub IRIs awaiting a record_linkback call
+      - name: graph
+        description: Source named graph IRI
+      - name: event_ts
+        description: Timestamp carried by the event (not the delivery time)
+      - name: after_frame
+        description: Full current entity frame (null for DELETE events)
+      - name: base_frame
+        description: Sparse previous-value diff used for receiver-side CAS
+      - name: emitted_at
+        description: When the row was inserted into the outbox
+      - name: delivered_at
+        description: When pg-trickle confirmed delivery (null if pending)

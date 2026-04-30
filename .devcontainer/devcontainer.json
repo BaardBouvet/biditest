@@ -1,0 +1,43 @@
+{
+  "name": "biditest — pg-ripple 0.77 + dbt",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+
+  "postCreateCommand": "pip install --user -r requirements.txt",
+
+  "remoteEnv": {
+    "DBT_PROFILES_DIR": "/workspace"
+  },
+
+  "forwardPorts": [5432],
+  "portsAttributes": {
+    "5432": { "label": "PostgreSQL (pg-ripple)", "onAutoForward": "silent" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbt-labs.dbt-power-user",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg"
+      ],
+      "settings": {
+        "dbt.profilesDir": "/workspace",
+        "sqltools.connections": [
+          {
+            "name": "pg-ripple biditest",
+            "driver": "PostgreSQL",
+            "server": "db",
+            "port": 5432,
+            "database": "biditest",
+            "username": "postgres",
+            "password": "postgres"
+          }
+        ]
+      }
+    }
+  }
+}

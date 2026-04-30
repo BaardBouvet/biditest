@@ -1,0 +1,5 @@
+dbt-core>=1.8.0
+dbt-postgres>=1.8.0
+# dbt-pg-ripple extends dbt-postgres with SPARQL-aware macros.
+# Install from the mono-repo source (not yet on PyPI as a standalone package).
+git+https://github.com/grove/pg-ripple.git@v0.78.0#subdirectory=clients/dbt-pg-ripple
