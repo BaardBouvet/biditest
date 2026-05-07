@@ -58,7 +58,12 @@
   {{ log("Loading Datalog rule…", info=True) }}
 
   {% set sql_drop_rules %}
-    SELECT pg_ripple.drop_rules('same_email');
+    DO $$
+    BEGIN
+      PERFORM pg_ripple.drop_rules('same_email');
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END $$;
   {% endset %}
   {% do adapter.execute(sql_drop_rules, auto_begin=False, fetch=False) %}
 
@@ -122,7 +127,15 @@
   {# create_datalog_view_from_rule_set() is not idempotent, so drop the stream
      table if it exists from a previous run. #}
   {% set sql_drop_view %}
-    SELECT pg_ripple.drop_datalog_view('same_email_inferred');
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'same_email_inferred'
+      ) THEN
+        PERFORM pg_ripple.drop_datalog_view('same_email_inferred');
+      END IF;
+    END $$;
   {% endset %}
   {% do adapter.execute(sql_drop_view, auto_begin=False, fetch=False) %}
 
@@ -130,6 +143,7 @@
      table that re-runs same_email inference on a 1s schedule whenever the base
      VP tables change. decode=false is required: decode=true generates a column
      alias 's' internally that confuses pg_trickle's query parser. #}
+     {#
   {% set sql_datalog_view %}
     SELECT pg_ripple.create_datalog_view_from_rule_set(
         name     => 'same_email_inferred',
@@ -140,7 +154,9 @@
     );
   {% endset %}
   {% do adapter.execute(sql_datalog_view, auto_begin=False, fetch=False) %}
-  {{ log("  ✓ same_email_inferred datalog view created (auto-refreshes every 100ms)", info=True) }}
+
+  {{ log("  ✓ same_email_inferred datalog view created (auto-refreshes)", info=True) }}
+  #}
 
   {% do adapter.execute("COMMIT", auto_begin=False, fetch=False) %}
 

@@ -1,0 +1,30 @@
+                                                                                         List of functions
+  Schema   |             Name              | Result data type |                                                     Argument data types                                                     | Type 
+-----------+-------------------------------+------------------+-----------------------------------------------------------------------------------------------------------------------------+------
+ pg_ripple | load_datalog_bundle           | void             | bundle_name text, named_graph text DEFAULT ''::text                                                                         | func
+ pg_ripple | load_jsonld                   | bigint           | document jsonb, graph_uri text DEFAULT NULL::text                                                                           | func
+ pg_ripple | load_nquads                   | bigint           | data text, strict boolean DEFAULT false                                                                                     | func
+ pg_ripple | load_nquads_file              | bigint           | path text, strict boolean DEFAULT false                                                                                     | func
+ pg_ripple | load_ntriples                 | bigint           | data text, strict boolean DEFAULT false                                                                                     | func
+ pg_ripple | load_ntriples_file            | bigint           | path text, strict boolean DEFAULT false                                                                                     | func
+ pg_ripple | load_ntriples_file_into_graph | bigint           | path text, graph_iri text                                                                                                   | func
+ pg_ripple | load_ntriples_into_graph      | bigint           | data text, graph_iri text                                                                                                   | func
+ pg_ripple | load_owl_ontology             | bigint           | path text                                                                                                                   | func
+ pg_ripple | load_rdfxml                   | bigint           | data text, strict boolean DEFAULT false                                                                                     | func
+ pg_ripple | load_rdfxml_file              | bigint           | path text, strict boolean DEFAULT false                                                                                     | func
+ pg_ripple | load_rdfxml_file_into_graph   | bigint           | path text, graph_iri text                                                                                                   | func
+ pg_ripple | load_rdfxml_into_graph        | bigint           | data text, graph_iri text                                                                                                   | func
+ pg_ripple | load_rules                    | bigint           | rules text, rule_set text DEFAULT 'custom'::text                                                                            | func
+ pg_ripple | load_rules_builtin            | bigint           | name text                                                                                                                   | func
+ pg_ripple | load_shacl                    | integer          | data text                                                                                                                   | func
+ pg_ripple | load_shape_bundle             | void             | bundle_name text                                                                                                            | func
+ pg_ripple | load_trig                     | bigint           | data text, strict boolean DEFAULT false                                                                                     | func
+ pg_ripple | load_trig_file                | bigint           | path text, strict boolean DEFAULT false                                                                                     | func
+ pg_ripple | load_triples_with_confidence  | bigint           | data text, confidence double precision DEFAULT 1.0, format text DEFAULT 'ntriples'::text, graph_uri text DEFAULT NULL::text | func
+ pg_ripple | load_turtle                   | bigint           | data text, strict boolean DEFAULT false                                                                                     | func
+ pg_ripple | load_turtle_file              | bigint           | path text, strict boolean DEFAULT false                                                                                     | func
+ pg_ripple | load_turtle_file_into_graph   | bigint           | path text, graph_iri text                                                                                                   | func
+ pg_ripple | load_turtle_into_graph        | bigint           | data text, graph_iri text                                                                                                   | func
+ pg_ripple | load_vocab_template           | bigint           | name text                                                                                                                   | func
+(25 rows)
+
