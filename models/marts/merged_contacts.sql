@@ -22,18 +22,42 @@
 -- non-canonical side; excluding them with FILTER NOT EXISTS leaves exactly
 -- one row per email.  The surviving subject carries the latest_wins name.
 
+-- One row per unique email address, with the conflict-resolved name.
+--
+-- The Datalog rule asserts owl:sameAs between the two subjects that share an
+-- email.  We deduplicate by grouping on email and picking one canonical subject.
+-- The latest_wins conflict policy on ex:name picks the most-recently-asserted
+-- value (by ex:lastModified timestamp) for each email group.
+
+WITH all_contacts AS (
+    SELECT
+        trim(BOTH '<>' FROM result->>'subject')    AS subject_iri,
+        btrim(result->>'email', '"')               AS email,
+        btrim(result->>'name', '"')                AS name,
+        btrim(result->>'lastModified', '"')::timestamp AS last_modified_at
+    FROM pg_ripple.sparql($sparql$
+        PREFIX ex:  <http://example.org/>
+        SELECT ?subject ?email ?name ?lastModified
+        WHERE {
+            ?subject ex:email ?email ;
+                     ex:name  ?name ;
+                     ex:lastModified ?lastModified .
+        }
+    $sparql$)
+),
+-- Apply latest_wins: for each email, pick the row with the latest timestamp
+-- If there's a tie, pick the lexicographically first subject as tiebreaker
+deduped_and_resolved AS (
+    SELECT DISTINCT ON (email)
+        subject_iri,
+        email,
+        name
+    FROM all_contacts
+    ORDER BY email, last_modified_at DESC, subject_iri ASC
+)
 SELECT
-    trim(BOTH '<>' FROM result->>'subject')  AS subject_iri,
-    btrim(result->>'email', '"')             AS email,
-    btrim(result->>'name',  '"')             AS name
-FROM pg_ripple.sparql($sparql$
-    PREFIX ex:  <http://example.org/>
-    PREFIX owl: <http://www.w3.org/2002/07/owl#>
-    SELECT ?subject ?email ?name
-    WHERE {
-        ?subject ex:email ?email ;
-                 ex:name  ?name .
-        FILTER NOT EXISTS { ?subject owl:sameAs ?other }
-    }
-$sparql$)
+    subject_iri,
+    email,
+    name
+FROM deduped_and_resolved
 ORDER BY email

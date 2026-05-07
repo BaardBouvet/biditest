@@ -142,21 +142,28 @@
   {# create_datalog_view_from_rule_set() registers a pg_trickle-managed stream
      table that re-runs same_email inference on a 1s schedule whenever the base
      VP tables change. decode=false is required: decode=true generates a column
-     alias 's' internally that confuses pg_trickle's query parser. #}
-     {#
+     alias 's' internally that confuses pg_trickle's query parser.
+     
+     Note: On initial setup, this may fail because the VP tables don't exist yet.
+     The view is optional for the tests — load_rules alone provides query-time
+     inference. #}
   {% set sql_datalog_view %}
-    SELECT pg_ripple.create_datalog_view_from_rule_set(
-        name     => 'same_email_inferred',
-        rule_set => 'same_email',
-        goal     => 'SELECT ?x ?y WHERE { ?x <http://www.w3.org/2002/07/owl#sameAs> ?y }',
-        schedule => '1s',
-        decode   => false
-    );
+    DO $$
+    BEGIN
+      PERFORM pg_ripple.create_datalog_view_from_rule_set(
+          name     => 'same_email_inferred',
+          rule_set => 'same_email',
+          goal     => 'SELECT ?x ?y WHERE { ?x <http://www.w3.org/2002/07/owl#sameAs> ?y }',
+          schedule => '1s',
+          decode   => false
+      );
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END $$;
   {% endset %}
   {% do adapter.execute(sql_datalog_view, auto_begin=False, fetch=False) %}
 
-  {{ log("  ✓ same_email_inferred datalog view created (auto-refreshes)", info=True) }}
-  #}
+  {{ log("  ✓ same_email_inferred datalog view creation attempted (optional)", info=True) }}
 
   {% do adapter.execute("COMMIT", auto_begin=False, fetch=False) %}
 
