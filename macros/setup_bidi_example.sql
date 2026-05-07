@@ -32,7 +32,7 @@
         }'::jsonb
     );
   {% endset %}
-  {% do run_query(sql_crm_mapping) %}
+  {% do adapter.execute(sql_crm_mapping, auto_begin=False, fetch=False) %}
   {{ log("  ✓ crm_contact mapping registered", info=True) }}
 
   {% set sql_erp_mapping %}
@@ -50,7 +50,7 @@
         }'::jsonb
     );
   {% endset %}
-  {% do run_query(sql_erp_mapping) %}
+  {% do adapter.execute(sql_erp_mapping, auto_begin=False, fetch=False) %}
   {{ log("  ✓ erp_contact mapping registered", info=True) }}
 
   {# ── Step 2: Composite-identity rule — merge on shared email (BIDI-REF-01) ── #}
@@ -60,7 +60,7 @@
   {% set sql_drop_rules %}
     SELECT pg_ripple.drop_rules('same_email');
   {% endset %}
-  {% do run_query(sql_drop_rules) %}
+  {% do adapter.execute(sql_drop_rules, auto_begin=False, fetch=False) %}
 
   {% set sql_load_rules %}
     SELECT pg_ripple.load_rules(
@@ -71,7 +71,7 @@
         rule_set => 'same_email'
     );
   {% endset %}
-  {% do run_query(sql_load_rules) %}
+  {% do adapter.execute(sql_load_rules, auto_begin=False, fetch=False) %}
   {{ log("  ✓ same_email Datalog rule loaded (BIDI-REF-01)", info=True) }}
 
   {# ── Step 3: latest_wins conflict policy on ex:name (BIDI-CONFLICT-01) ─── #}
@@ -84,7 +84,7 @@
         strategy  => 'latest_wins'
     );
   {% endset %}
-  {% do run_query(sql_conflict) %}
+  {% do adapter.execute(sql_conflict, auto_begin=False, fetch=False) %}
   {{ log("  ✓ latest_wins policy registered for ex:name (BIDI-CONFLICT-01)", info=True) }}
 
   {# ── Step 5: Subscriptions for both relays (BIDI-LOOP-01) ────────────────── #}
@@ -100,7 +100,7 @@
         '
     );
   {% endset %}
-  {% do run_query(sql_crm_sub) %}
+  {% do adapter.execute(sql_crm_sub, auto_begin=False, fetch=False) %}
   {{ log("  ✓ crm_relay subscription created", info=True) }}
 
   {% set sql_erp_sub %}
@@ -112,8 +112,37 @@
         '
     );
   {% endset %}
-  {% do run_query(sql_erp_sub) %}
+  {% do adapter.execute(sql_erp_sub, auto_begin=False, fetch=False) %}
   {{ log("  ✓ erp_relay subscription created", info=True) }}
+
+  {# ── Step 6: Datalog view for automatic inference (BIDI-REF-01) ──────────── #}
+
+  {{ log("Creating datalog view for automatic inference…", info=True) }}
+
+  {# create_datalog_view_from_rule_set() is not idempotent, so drop the stream
+     table if it exists from a previous run. #}
+  {% set sql_drop_view %}
+    SELECT pg_ripple.drop_datalog_view('same_email_inferred');
+  {% endset %}
+  {% do adapter.execute(sql_drop_view, auto_begin=False, fetch=False) %}
+
+  {# create_datalog_view_from_rule_set() registers a pg_trickle-managed stream
+     table that re-runs same_email inference on a 1s schedule whenever the base
+     VP tables change. decode=false is required: decode=true generates a column
+     alias 's' internally that confuses pg_trickle's query parser. #}
+  {% set sql_datalog_view %}
+    SELECT pg_ripple.create_datalog_view_from_rule_set(
+        name     => 'same_email_inferred',
+        rule_set => 'same_email',
+        goal     => 'SELECT ?x ?y WHERE { ?x <http://www.w3.org/2002/07/owl#sameAs> ?y }',
+        schedule => '1s',
+        decode   => false
+    );
+  {% endset %}
+  {% do adapter.execute(sql_datalog_view, auto_begin=False, fetch=False) %}
+  {{ log("  ✓ same_email_inferred datalog view created (auto-refreshes every 100ms)", info=True) }}
+
+  {% do adapter.execute("COMMIT", auto_begin=False, fetch=False) %}
 
   {{ log("", info=True) }}
   {{ log("pg-ripple setup complete. Run 'dbt seed' next.", info=True) }}

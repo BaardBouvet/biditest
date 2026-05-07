@@ -41,7 +41,7 @@
           mode        => 'diff'
       );
     {% endset %}
-    {% do run_query(sql) %}
+    {% do adapter.execute(sql, auto_begin=False, fetch=False) %}
     {{ log("  CRM contact ingested: " ~ subject_iri, info=True) }}
   {% endfor %}
 
@@ -70,29 +70,22 @@
           mode        => 'diff'
       );
     {% endset %}
-    {% do run_query(sql) %}
+    {% do adapter.execute(sql, auto_begin=False, fetch=False) %}
     {{ log("  ERP contact ingested: " ~ subject_iri, info=True) }}
   {% endfor %}
 
   {{ log("", info=True) }}
   {{ log("All contacts ingested.", info=True) }}
 
-  {# ── Step 2: Run Datalog inference (BIDI-REF-01) ─────────────────────────── #}
+  {# ── Step 2: Inference is handled by the same_email_inferred datalog view ─── #}
   {#
-    pg_ripple Datalog rules are not evaluated automatically — infer() must be
-    called explicitly after data is loaded. It materialises the owl:sameAs
-    facts derived by the same_email rule into the VP tables, which the
-    merged_contacts model then queries via SPARQL.
-
-    rule_graph_scope = 'all' (set as a database default in
-    init/01_init_ripple.sql) allows the rule engine to see triples across all
-    named graphs, which is required for the cross-graph email match to work.
+    The same_email_inferred stream table (created in setup_bidi_example.sql)
+    is managed by pg_trickle and re-runs same_email inference on a 5s schedule
+    whenever the base VP tables change. No explicit infer() call needed.
   #}
 
-  {% set sql_infer %}
-    SELECT pg_ripple.infer('same_email');
-  {% endset %}
-  {% do run_query(sql_infer) %}
-  {{ log("✓ Datalog inference complete — owl:sameAs facts materialised (BIDI-REF-01)", info=True) }}
+  {{ log("✓ Datalog inference will run automatically via same_email_inferred view (BIDI-REF-01)", info=True) }}
+
+  {% do adapter.execute("COMMIT", auto_begin=False, fetch=False) %}
 
 {% endmacro %}

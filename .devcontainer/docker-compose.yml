@@ -1,6 +1,6 @@
 services:
   db:
-    image: ghcr.io/grove/pg-ripple:0.78.0
+    image: ghcr.io/grove/pg-ripple:0.99.0
     restart: unless-stopped
     environment:
       POSTGRES_DB: biditest
@@ -18,7 +18,7 @@ services:
       retries: 10
 
   app:
-    image: mcr.microsoft.com/devcontainers/python:3.12-bookworm
+    build: .
     volumes:
       - ..:/workspace:cached
     working_dir: /workspace
@@ -28,6 +28,26 @@ services:
         condition: service_healthy
     environment:
       DBT_PROFILES_DIR: /workspace
+
+  pg-ripple-http:
+    image: ghcr.io/grove/pg-ripple-http:0.99.0
+    ports:
+      - "7878:7878"
+    environment:
+      PG_RIPPLE_HTTP_PG_URL: "postgresql://postgres:postgres@db/biditest"
+      PG_RIPPLE_HTTP_PORT: "7878"
+      PG_RIPPLE_HTTP_POOL_SIZE: "8"
+      PG_RIPPLE_HTTP_CORS_ORIGINS: "*"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  pg-tide:
+    image: ghcr.io/trickle-labs/pg-tide:0.16.0
+    command: ["--postgres-url", "postgres://postgres:postgres@db:5432/biditest"]
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   pg_data:

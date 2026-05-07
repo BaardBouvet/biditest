@@ -1,8 +1,12 @@
 {
-  "name": "biditest — pg-ripple 0.77 + dbt",
+  "name": "biditest — pg-ripple 0.99 + dbt",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspace",
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
 
   "postCreateCommand": "pip install --user -r requirements.txt",
 
